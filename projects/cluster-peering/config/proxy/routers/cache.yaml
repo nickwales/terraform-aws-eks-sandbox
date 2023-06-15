@@ -1,0 +1,14 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: ServiceRouter
+metadata:
+  name: cache
+spec:
+  routes:
+    - match:
+        http:
+          header:
+            - name: x-debug
+              exact: '1'
+      destination:
+        service: cache
+        serviceSubset: v2

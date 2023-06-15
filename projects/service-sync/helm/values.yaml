@@ -1,0 +1,31 @@
+global:
+ name: consul
+ datacenter: dc1
+ gossipEncryption:
+  autoGenerate: true
+ tls:
+  enabled: true
+  httpsOnly: false
+  enableAutoEncrypt: true
+  verify: true
+# peering:
+ acls:
+  manageSystemACLs: true
+  createReplicationToken: true
+connectInject:
+  enabled: false
+server:
+ replicas: 1
+syncCatalog:
+  enabled: true
+  toConsul: true
+  toK8S: false
+  k8sAllowNamespaces: ['frontend', 'database']
+  k8sDenyNamespaces: []
+ui:
+ enabled: true
+ service:
+  enabled: true
+  type: LoadBalancer
+dns:
+ enabled: true

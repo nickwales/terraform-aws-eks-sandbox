@@ -1,0 +1,4 @@
+{
+    "primary_datacenter": "dc1",
+    "primary_gateways": ["ab156fda7eeae4158bd8e18b807fd903-575411942.us-east-2.elb.amazonaws.com:443"]
+}

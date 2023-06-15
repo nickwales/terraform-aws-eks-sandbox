@@ -1,0 +1,37 @@
+global:
+  name: consul
+  datacenter: dc2
+  tls:
+    enabled: true
+  acls:
+    manageSystemACLs: true
+  peering:
+    enabled: true
+  gossipEncryption:
+    autoGenerate: true
+connectInject:
+  enabled: true
+controller:
+  enabled: true
+meshGateway:
+  enabled: true
+server:
+  replicas: 1
+  exposeService: 
+    enabled: true
+    type: LoadBalancer
+client:
+  enabled: true
+  exposeGossipPorts: true
+  # Here we're including the server config exported from the primary
+  # via the federation secret. This config includes the addresses of
+  # the primary datacenter's mesh gateways so Consul can begin federation.
+  # extraVolumes:
+  #   - type: secret
+  #     name: consul-federation
+  #     items:
+  #       - key: serverConfigJSON
+  #         path: config.json
+  #     load: true
+
+

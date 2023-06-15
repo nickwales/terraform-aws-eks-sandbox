@@ -1,0 +1,5 @@
+consul-federation-secret.yaml
+.terraform/*
+terraform.tfstate*
+tmp.json
+projects/*/.terraform/*
