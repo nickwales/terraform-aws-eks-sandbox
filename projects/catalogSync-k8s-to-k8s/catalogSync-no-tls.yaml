@@ -1,0 +1,27 @@
+global:
+  enabled: false
+  tls:
+    enabled: false
+  name: consul
+  datacenter: dc1
+syncCatalog:
+  enabled: true
+  toConsul: true
+  k8sTag: 'remote-cluster'
+  addK8SNamespaceSuffix: false
+  toK8S: false
+  ingress:
+    enabled: true
+    loadBalancerIPs: false
+  nodePortSyncType: 'InternalOnly'
+  syncClusterIPServices: true
+ui:
+  enabled: false
+dns:
+  enabled: true
+externalServers:
+  enabled: true
+  httpsPort: 8500
+  grpcPort: 8502
+connectInject:
+  enabled: false

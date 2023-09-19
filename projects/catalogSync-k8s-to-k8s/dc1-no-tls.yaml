@@ -1,0 +1,8 @@
+global:
+  tls:
+    enabled: false
+server:
+  exposeService:
+    enabled: true
+    type: LoadBalancer
+  
