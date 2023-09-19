@@ -1,0 +1,17 @@
+global:
+  tls:
+    enabled: true
+    verify: false
+    caCert:
+      secretName: consul-agent-ca
+      secretKey: tls.crt
+    caKey:
+      secretName: consul-agent-ca-key
+      secretKey: tls.key  
+    serverAdditionalDNSSANs:
+      - '*.us-east-1.elb.amazonaws.com'
+server:
+  exposeService:
+    enabled: true
+    type: LoadBalancer
+  

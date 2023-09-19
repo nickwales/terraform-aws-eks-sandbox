@@ -1,0 +1,33 @@
+global:
+  enabled: false
+  tls:
+    enabled: true
+    verify: false
+    caCert:
+      secretName: consul-agent-ca
+      secretKey: tls.crt
+    caKey:
+      secretName: consul-agent-ca-key
+      secretKey: tls.key  
+  name: consul
+  datacenter: dc1
+syncCatalog:
+  enabled: true
+  toConsul: true
+  k8sTag: 'remote-cluster'
+  addK8SNamespaceSuffix: false
+  toK8S: false
+  ingress:
+    enabled: true
+    loadBalancerIPs: false
+  nodePortSyncType: 'InternalOnly'
+  syncClusterIPServices: true
+ui:
+  enabled: false
+dns:
+  enabled: true
+externalServers:
+  enabled: true
+  grpcPort: 8502
+connectInject:
+  enabled: false
