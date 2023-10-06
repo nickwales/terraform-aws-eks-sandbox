@@ -7,17 +7,22 @@ apiVersion: v1
 kind: Service
 metadata:
   name: web
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing      
 spec:
   selector:
     app: web
   ports:
     - port: 9090
       targetPort: 9090
+  type: LoadBalancer      
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-deployment
+  name: web
   labels:
     app: web
 spec:
@@ -32,15 +37,16 @@ spec:
     spec:
       containers:
         - name: web
-          image: nicholasjackson/fake-service:v0.7.8
+          image: nicholasjackson/fake-service:v0.25.2
           ports:
             - containerPort: 9090
           env:
             - name: 'LISTEN_ADDR'
               value: '0.0.0.0:9090'
-            - name: 'UPSTREAM_URIS'
-              value: 'http://middleware.middleware.svc.cluster.local:9090'
             - name: 'NAME'
-              value: 'Frontend'
+              value: 'web'
             - name: 'MESSAGE'
-              value: 'I'm the frontend'
+              value: 'Hello World'
+            - name: 'UPSTREAM_URIS'
+              value: "http://api.service.consul"
+           #   value: "http://middleware-middleware.service.consul:9090,http://database-database.service.consul:9090,http://client.service.consul:9090,http://redis-middleware.service.consul:9090"

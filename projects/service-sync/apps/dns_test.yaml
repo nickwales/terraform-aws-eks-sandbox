@@ -1,13 +1,14 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: v1
+kind: Pod
 metadata:
-  name: dns
+  name: nettools
+  namespace: default
 spec:
-  template:
-    spec:
-      containers:
-        - name: dns
-          image: anubhavmishra/tiny-tools
-          command: ['dig', 'database-backend.service.consul']
-      restartPolicy: Never
-  backoffLimit: 4
+  containers:
+  - name: nettools
+    image: jrecord/nettools:latest
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Never

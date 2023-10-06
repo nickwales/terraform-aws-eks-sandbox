@@ -1,15 +1,20 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: database
+  name: database-ro
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: database-svc
+  name: database-ro
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "internal"
+    consul.hashicorp.com/service-name: "database"
+    consul.hashicorp.com/service-tags: "read-only"
 spec:
+  type: LoadBalancer
   selector:
-    app: database
+    app: database-ro
   ports:
     - port: 9090
       targetPort: 9090
@@ -17,21 +22,21 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: database
+  name: database-ro
   labels:
-    app: database
+    app: database-ro
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
-      app: database
+      app: database-ro
   template:
     metadata:
       labels:
-        app: database
+        app: database-ro
     spec:
       containers:
-        - name: database
+        - name: database-ro
           image: nicholasjackson/fake-service:v0.25.2
           ports:
             - containerPort: 9090
