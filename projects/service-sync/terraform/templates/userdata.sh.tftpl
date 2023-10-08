@@ -1,0 +1,244 @@
+#!/bin/sh
+
+## Get instance IP from cloud-init (replace with VM IP when appropriate)
+INSTANCE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
+
+## Install keys, repos and packages
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor > /etc/apt/trusted.gpg.d/hashicorp.gpg
+chmod go-w /etc/apt/trusted.gpg.d/hashicorp.gpg
+chmod ugo+r /etc/apt/trusted.gpg.d/hashicorp.gpg
+
+apt-add-repository -y "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+
+apt update && apt install -y unzip consul nomad jq docker.io net-tools
+
+wget https://releases.hashicorp.com/consul-aws/0.1.2/consul-aws_0.1.2_linux_amd64.zip
+
+unzip consul-aws_0.1.2_linux_amd64.zip -d /usr/local/bin/
+
+# Install fake-service
+mkdir -p /opt/fake-service
+wget https://github.com/nicholasjackson/fake-service/releases/download/v0.25.2/fake_service_linux_amd64.zip
+unzip -od /opt/fake-service/ fake_service_linux_amd64.zip
+rm -f fake_service_linux_amd64.zip
+chmod +x /opt/fake-service/fake-service
+
+# Configure a service on the VM
+cat <<EOT > /etc/systemd/system/middleware.service
+[Unit]
+Description=Middleware
+After=syslog.target network.target
+
+[Service]
+Environment=NAME="Middleware on a VM"
+Environment=MESSAGE="Middleware on a VM"
+Environment=LISTEN_ADDR="0.0.0.0:9090"
+Environment=UPSTREAM_URIS="http://database.service.consul:9090"
+ExecStart=/opt/fake-service/fake-service
+ExecStop=/bin/sleep 5
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+systemctl daemon-reload
+systemctl enable middleware --now
+
+cat <<EOT > /etc/consul.d/middleware.hcl
+service {
+  name = "middleware"
+  port = 9090
+  tags = ["api", "middleware"]
+
+  checks = [
+    {
+      name = "HTTP API on port 9090"
+      http = "http://127.0.0.1:9090/health"
+      interval = "10s"
+      timeout = "5s"
+    }
+  ]
+  token = "${consul_token}"
+}
+EOT
+
+# Consul Config
+mkdir /etc/consul.d/tls
+cat <<EOT > /etc/consul.d/tls/consul-agent-ca.pem
+-----BEGIN CERTIFICATE-----
+MIIC6zCCApGgAwIBAgIQCR63l1cC+aGXZCeccnyz6zAKBggqhkjOPQQDAjCBuDEL
+MAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRowGAYDVQQJExExMDEgU2Vjb25kIFN0cmVldDEOMAwGA1UEERMFOTQxMDUxFzAV
+BgNVBAoTDkhhc2hpQ29ycCBJbmMuMT8wPQYDVQQDEzZDb25zdWwgQWdlbnQgQ0Eg
+MTIxMjI1NDQ1MzkxNTkwODgxNTA3Nzc5MDU4MDExMTAyNzA5NTUwHhcNMjMwODE4
+MTkzNzU0WhcNMjgwODE2MTkzNzU0WjCBuDELMAkGA1UEBhMCVVMxCzAJBgNVBAgT
+AkNBMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2NvMRowGAYDVQQJExExMDEgU2Vjb25k
+IFN0cmVldDEOMAwGA1UEERMFOTQxMDUxFzAVBgNVBAoTDkhhc2hpQ29ycCBJbmMu
+MT8wPQYDVQQDEzZDb25zdWwgQWdlbnQgQ0EgMTIxMjI1NDQ1MzkxNTkwODgxNTA3
+Nzc5MDU4MDExMTAyNzA5NTUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQGtOjG
+Tp0ImedQ+6hrnTMu4phpm86+dcdqL84YKI3rsDFu4kuwP1VtjYxu+OG0c8ch7Dyw
+MyAzKEote1TH4vWlo3sweTAOBgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB
+/zApBgNVHQ4EIgQgPBJHX8NK9iV64XfQGDHbjfsEumU1c6RsPMof55aPkzQwKwYD
+VR0jBCQwIoAgPBJHX8NK9iV64XfQGDHbjfsEumU1c6RsPMof55aPkzQwCgYIKoZI
+zj0EAwIDSAAwRQIgY3adlExJ7mye3v5IkqrMEhS9P97qSzhHQTtY8vTrs/kCIQCe
+ipIlIpwxgiAUdVhnmJxXeZSJ0Z6Zd5D58Qo6ghszRg==
+-----END CERTIFICATE-----
+EOT
+
+cat <<EOT > /etc/consul.d/tls/dc1-server-consul-0.pem
+-----BEGIN CERTIFICATE-----
+MIICsjCCAligAwIBAgIQV1j4wVafIVS+IcypBbIaJDAKBggqhkjOPQQDAjCBuDEL
+MAkGA1UEBhMCVVMxCzAJBgNVBAgTAkNBMRYwFAYDVQQHEw1TYW4gRnJhbmNpc2Nv
+MRowGAYDVQQJExExMDEgU2Vjb25kIFN0cmVldDEOMAwGA1UEERMFOTQxMDUxFzAV
+BgNVBAoTDkhhc2hpQ29ycCBJbmMuMT8wPQYDVQQDEzZDb25zdWwgQWdlbnQgQ0Eg
+MTIxMjI1NDQ1MzkxNTkwODgxNTA3Nzc5MDU4MDExMTAyNzA5NTUwHhcNMjMwODE4
+MTkzODA3WhcNMjQwODE3MTkzODA3WjAcMRowGAYDVQQDExFzZXJ2ZXIuZGMxLmNv
+bnN1bDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOycKiT9/oUroO2s7uDSgzdp
+U63I7B+EsYQ8bftSNrHpKCWqjoXo5a0Upv+wUIfK5gEr0ZwQ803YKqycRPtq9W6j
+gd4wgdswDgYDVR0PAQH/BAQDAgWgMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEF
+BQcDAjAMBgNVHRMBAf8EAjAAMCkGA1UdDgQiBCATKCx4AKulkjmwptrn6axg4bIC
+cYr5GExzQK4+HVWcGjArBgNVHSMEJDAigCA8Ekdfw0r2JXrhd9AYMduN+wS6ZTVz
+pGw8yh/nlo+TNDBEBgNVHREEPTA7ghVjb25zdWwuc2VydmljZS5jb25zdWyCEXNl
+cnZlci5kYzEuY29uc3Vsgglsb2NhbGhvc3SHBH8AAAEwCgYIKoZIzj0EAwIDSAAw
+RQIhAOHpx4813+STatZkXYI7H5oacRwWuEg0E3RJubCoy+C3AiA2mgyS1aWFYrSF
+d6UCSUyBQBJ8gXqqEGCfdJVZVAlOMQ==
+-----END CERTIFICATE-----
+EOT
+
+cat <<EOT > /etc/consul.d/tls/dc1-server-consul-0-key.pem
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIEPYBXpVKPbH0VkWOCGePwVWhATULMwBcW0hTZhRITR5oAoGCCqGSM49
+AwEHoUQDQgAE7JwqJP3+hSug7azu4NKDN2lTrcjsH4SxhDxt+1I2sekoJaqOhejl
+rRSm/7BQh8rmASvRnBDzTdgqrJxE+2r1bg==
+-----END EC PRIVATE KEY-----
+EOT
+
+chown consul:consul /etc/consul.d/tls/*.pem
+
+## Configure Consul and start it up
+cat <<EOT > /etc/consul.d/consul.hcl
+datacenter = "${datacenter}"
+data_dir = "/opt/consul"
+log_level = "INFO"
+server = true
+bootstrap_expect = 1
+advertise_addr = "{{ GetDefaultInterfaces | exclude \"type\" \"IPv6\" | attr \"address\" }}"
+client_addr = "0.0.0.0"
+ui = true
+ports {
+  serf_wan = -1
+  grpc = 8502
+  grpc_tls = 8503
+  https = 8501
+}
+retry_join = ["$${INSTANCE_IP}"]
+
+ui_config {
+  enabled = true
+}
+
+acl {
+  enabled = true
+  default_policy = "deny"
+  enable_token_persistence = true
+  tokens {
+    initial_management = "${consul_token}"
+    agent = "${consul_token}"
+  }
+}
+
+tls {
+  defaults {
+    ca_file = "/etc/consul.d/tls/consul-agent-ca.pem"
+    cert_file = "/etc/consul.d/tls/dc1-server-consul-0.pem"
+    key_file = "/etc/consul.d/tls/dc1-server-consul-0-key.pem"
+  }
+}
+EOT
+
+systemctl daemon-reload
+systemctl enable consul --now
+
+sleep 10 # Give consul a moment to come alive
+
+
+### Worry about this later, we will need some caching in front of Consul but systemd-resolved 
+### can only bind to localhost.
+
+## Configure Consul DNS 
+# mkdir -p /etc/systemd/resolved.conf.d/
+# cat <<EOT > /etc/systemd/resolved.conf.d/consul.conf
+# [Resolve]
+# DNS=127.0.0.1:8600
+# DNSSEC=false
+# Domains=~consul
+# EOT
+
+systemctl restart systemd-resolved
+
+export CONSUL_HTTP_TOKEN=${consul_token}
+echo CONSUL_HTTP_TOKEN=${consul_token} >> /etc/environment
+
+## Give the anonymous policy read access for DNS and catalog
+cat <<EOT > /root/anonymous_policy.hcl
+agent_prefix "" {
+  policy = "read"
+}
+node_prefix "" {
+  policy = "read"
+}
+service_prefix "" {
+  policy = "read"
+}
+EOT
+
+consul acl policy create -name "anonymous-policy" \
+  -description "This is the anonymous policy" \
+  -rules @/root/anonymous_policy.hcl
+
+consul acl token update \
+  -id anonymous \
+  -policy-name anonymous-policy
+
+## Setup Consul AWS
+cat <<EOT > /root/consul-aws_policy.hcl
+agent_prefix "" {
+  policy = "read"
+}
+node_prefix "" {
+  policy = "write"
+}
+service_prefix "" {
+  policy = "write"
+}
+EOT
+
+consul acl policy create -name "consul-aws-policy" \
+  -description "This is the Consul AWS policy" \
+  -rules @/root/consul-aws_policy.hcl
+
+consul-aws-token=$(consul acl token create -description "Consul-AWS token" -policy-name consul-aws-policy -format json | jq -r .SecretID)
+
+
+cat <<EOF > /etc/systemd/system/consul-aws.service
+[Unit]
+Description=Consul AWS 
+Documentation=https://developer.hashicorp.com/consul/tutorials/cloud-integrations/sync-aws-services
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment=CONSUL_HTTP_TOKEN=${consul-token}
+Environment=AWS_DEFAULT_REGION=us-east-2
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/local/bin/consul-aws sync-catalog -aws-namespace-id ${cloudmap_id} -to-consul -consul-service-prefix my_hcp_consul_cluster 
+KillMode=process
+KillSignal=SIGINT
+LimitNOFILE=65536
+LimitNPROC=infinity
+Restart=on-failure
+RestartSec=2
+EOF
+
+systemctl enable consul-aws --now
