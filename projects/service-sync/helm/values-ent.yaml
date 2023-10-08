@@ -1,0 +1,38 @@
+global:
+  name: consul
+  datacenter: dc1
+  enableConsulNamespaces: true
+  enterpriseLicense:
+    secretName: 'consul-ent-license'
+    secretKey: 'key'
+  gossipEncryption:
+    autoGenerate: true
+  tls:
+    enabled: true
+    httpsOnly: false
+    enableAutoEncrypt: true
+    verify: true
+  acls:
+    manageSystemACLs: true
+    createReplicationToken: true
+  connectInject:
+    enabled: false
+  server:
+    image: "hashicorp/consul-enterprise:1.16-ent"
+  replicas: 1
+  syncCatalog:
+    enabled: true
+    toConsul: true
+    toK8S: false
+    ingress:
+      enabled: true
+      loadBalancerIPs: true
+    k8sAllowNamespaces: ['frontend', 'database', 'middleware']
+    k8sDenyNamespaces: []
+  ui:
+    enabled: true
+    service:
+      enabled: true
+      type: LoadBalancer
+  dns:
+    enabled: true
