@@ -33,7 +33,7 @@ After=syslog.target network.target
 Environment=NAME="Middleware on a VM"
 Environment=MESSAGE="Middleware on a VM"
 Environment=LISTEN_ADDR="0.0.0.0:9090"
-Environment=UPSTREAM_URIS="http://database.service.consul:9090"
+Environment=UPSTREAM_URIS="http://database-svc.service.consul:9090"
 ExecStart=/opt/fake-service/fake-service
 ExecStop=/bin/sleep 5
 Restart=always
@@ -229,7 +229,7 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Environment=CONSUL_HTTP_TOKEN=${consul-token}
+Environment=CONSUL_HTTP_TOKEN=${consul_token}
 Environment=AWS_DEFAULT_REGION=us-east-2
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStart=/usr/local/bin/consul-aws sync-catalog -aws-namespace-id ${cloudmap_id} -to-consul -consul-service-prefix my_hcp_consul_cluster 
