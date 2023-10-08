@@ -108,17 +108,3 @@ resource "helm_release" "consul" {
     "${file("${path.module}/../helm/external_server.yaml")}"
   ]  
 }
-
-# resource "helm_release" "nginx-ingress" {
-#   name       = "nginx-ingress"
-
-#   repository = "oci://ghcr.io/nginxinc/charts/nginx-ingress"
-#   chart      = "nginx-ingress"
-#   version    = "0.18.0"
-
-#   values = [
-#     "${file("${path.module}/../helm/external_server.yaml")}"
-#   ]  
-# }
-
-# helm install nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version 0.18.0
