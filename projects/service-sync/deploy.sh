@@ -5,7 +5,7 @@ consul tls ca create
 mkdir certs
 mv *.pem certs/
 
-terraform -chdir=terraform apply
+terraform -chdir=terraform apply -auto-approve
 
 cluster_name=$(cat terraform.tfstate | jq -r .outputs.cluster_name.value)
 region=$(cat terraform.tfstate | jq -r .outputs.region.value)
